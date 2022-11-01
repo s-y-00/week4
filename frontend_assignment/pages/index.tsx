@@ -1,10 +1,13 @@
 import detectEthereumProvider from "@metamask/detect-provider"
 import { Strategy, ZkIdentity } from "@zk-kit/identity"
-import { generateMerkleProof, Semaphore } from "@zk-kit/protocols"
-import { providers } from "ethers"
+import { generateMerkleTree, generateMerkleProof, Semaphore } from "@zk-kit/protocols"
+import { Contract, providers, utils } from "ethers"
 import Head from "next/head"
 import React from "react"
 import styles from "../styles/Home.module.css"
+import {Card, CardContent, Typography } from '@mui/material';
+import UserForm from './form/UserForm';
+import Greeter from 'artifacts/contracts/Greeters.sol/Greeters.json';
 
 export default function Home() {
     const [logs, setLogs] = React.useState("Connect your wallet and greet!")
@@ -59,6 +62,38 @@ export default function Home() {
         }
     }
 
+    const [greeting, setGreeting] = React.useState('');
+	React.useEffect(() => {listenGreeting()})
+
+    async function listenGreeting() {
+		try {
+            const provider = (await detectEthereumProvider()) as any
+            await provider.request({ method: "eth_requestAccounts" })
+            const ethersProvider = new providers.Web3Provider(provider)
+            
+			const greetingContract = new Contract(
+				'0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+				Greeter.abi,
+                ethersProvider
+			)
+            
+            greetingContract.on('NewGreeting', (greeting) => {
+                console.log(utils.parseBytes32String(greeting))
+                setGreeting(utils.parseBytes32String(greeting))
+            })
+		} catch (error) {
+			console.error(error);
+		}
+	}
+
+    const GreetingCard = () => (
+		<Card className={styles.card}>
+			<CardContent>
+				<Typography gutterBottom>{greeting}</Typography>
+			</CardContent>
+		</Card>
+	)
+
     return (
         <div className={styles.container}>
             <Head>
@@ -77,6 +112,10 @@ export default function Home() {
                 <div onClick={() => greet()} className={styles.button}>
                     Greet
                 </div>
+                <Card variant="outlined" sx={{ my: { xs: 3, md: 6 }, p: { xs: 2, md: 3 } }}>
+                <GreetingCard />
+                    <UserForm />
+                </Card>
             </main>
         </div>
     )
